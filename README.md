@@ -1,0 +1,2 @@
+# elog
+Golang simple logger
