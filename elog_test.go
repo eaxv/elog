@@ -305,12 +305,12 @@ func TestAppendFileInfo(t *testing.T) {
 	defer resetState()
 	_ElogErrorAppendFileLine = true
 	err := fmt.Errorf("base error")
-	got := AppendFileInfo(nil, err, 3)
+	got := appendFileInfo(nil, err, 3)
 	if got == nil {
-		t.Fatal("AppendFileInfo vrátil nil")
+		t.Fatal("appendFileInfo vrátil nil")
 	}
 	if !strings.Contains(got.Error(), "/") {
-		t.Errorf("AppendFileInfo nepřidal file info: %q", got.Error())
+		t.Errorf("appendFileInfo nepřidal file info: %q", got.Error())
 	}
 }
 
@@ -318,9 +318,9 @@ func TestAppendFileInfoDisabled(t *testing.T) {
 	defer resetState()
 	_ElogErrorAppendFileLine = false
 	err := fmt.Errorf("base error")
-	got := AppendFileInfo(nil, err, 3)
+	got := appendFileInfo(nil, err, 3)
 	if got.Error() != err.Error() {
-		t.Errorf("AppendFileInfo při disabled měl vrátit původní error, got: %q", got.Error())
+		t.Errorf("appendFileInfo při disabled měl vrátit původní error, got: %q", got.Error())
 	}
 }
 
@@ -329,17 +329,17 @@ func TestAppendFileInfoAlreadySlash(t *testing.T) {
 	_ElogErrorAppendFileLine = true
 	// chyba končící '/' — file info se nepřidá
 	err := fmt.Errorf("chyba /elog_test:99/")
-	got := AppendFileInfo(nil, err, 3)
+	got := appendFileInfo(nil, err, 3)
 	if got.Error() != err.Error() {
-		t.Errorf("AppendFileInfo přidal file info chybě zakončené '/': %q", got.Error())
+		t.Errorf("appendFileInfo přidal file info chybě zakončené '/': %q", got.Error())
 	}
 }
 
 func TestAppendFileInfoNil(t *testing.T) {
 	defer resetState()
-	got := AppendFileInfo(nil, nil, 3)
+	got := appendFileInfo(nil, nil, 3)
 	if got != nil {
-		t.Errorf("AppendFileInfo(nil) = %v, want nil", got)
+		t.Errorf("appendFileInfo(nil) = %v, want nil", got)
 	}
 }
 
@@ -502,12 +502,12 @@ func TestTracefPatternFilter(t *testing.T) {
 	}
 }
 
-// --- 8. GetRuntimeInfo ---
+// --- 8. getRuntimeInfo ---
 
 func TestGetRuntimeInfo(t *testing.T) {
-	ri, err := GetRuntimeInfo(nil, 2)
+	ri, err := getRuntimeInfo(nil, 2)
 	if err != nil {
-		t.Fatalf("GetRuntimeInfo error: %v", err)
+		t.Fatalf("getRuntimeInfo error: %v", err)
 	}
 	if ri.FileName == "" {
 		t.Error("FileName je prázdný")

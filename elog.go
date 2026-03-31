@@ -164,14 +164,14 @@ type LogCtx struct {
 	StackSkip int
 }
 
-type RuntimeInfoT struct {
+type runtimeInfoT struct {
 	FileName string
 	Line     int
 	Func     string
 }
 
-func GetRuntimeInfo(ctx *LogCtx, skip int) (RuntimeInfoT, error) {
-	var ri RuntimeInfoT
+func getRuntimeInfo(ctx *LogCtx, skip int) (runtimeInfoT, error) {
+	var ri runtimeInfoT
 
 	if ctx != nil {
 		skip += ctx.StackSkip
@@ -180,12 +180,12 @@ func GetRuntimeInfo(ctx *LogCtx, skip int) (RuntimeInfoT, error) {
 	fpcs := make([]uintptr, 1)
 	n := runtime.Callers(skip, fpcs)
 	if n == 0 {
-		return ri, fmt.Errorf("GetRuntimeInfo n = 0")
+		return ri, fmt.Errorf("getRuntimeInfo n = 0")
 	}
 	caller := runtime.FuncForPC(fpcs[0] - 1)
 	if caller == nil {
 		//fmt.Println("MSG CALLER WAS NIL")
-		return ri, fmt.Errorf("GetRuntimeInfo caller == nil")
+		return ri, fmt.Errorf("getRuntimeInfo caller == nil")
 	}
 	file, ln := caller.FileLine(fpcs[0] - 1)
 	aa := strings.Split(file, "/")
@@ -216,7 +216,7 @@ func core_logit(ctx *LogCtx, o ...interface{}) {
 
 func logit(ctx *LogCtx, lvl int, prefix string, o ...interface{}) {
 	if _ElogLevel >= lvl {
-		ri, _ := GetRuntimeInfo(ctx, 4)
+		ri, _ := getRuntimeInfo(ctx, 4)
 		ss := fmt.Sprint(o...)
 		ss2 := fmt.Sprintf("%s %s [%s:%d] ", prefix, ss, ri.FileName, ri.Line)
 		core_logit(ctx, ss2)
@@ -225,7 +225,7 @@ func logit(ctx *LogCtx, lvl int, prefix string, o ...interface{}) {
 
 func logitf(ctx *LogCtx, lvl int, prefix string, format string, o ...interface{}) {
 	if _ElogLevel >= lvl {
-		ri, _ := GetRuntimeInfo(ctx, 4)
+		ri, _ := getRuntimeInfo(ctx, 4)
 		ss := fmt.Sprintf(format, o...)
 		ss2 := fmt.Sprintf("%s %s [%s:%d] ", prefix, ss, ri.FileName, ri.Line)
 		core_logit(ctx, ss2)
@@ -234,7 +234,7 @@ func logitf(ctx *LogCtx, lvl int, prefix string, format string, o ...interface{}
 
 func traceLogitf(ctx *LogCtx, format string, o ...interface{}) {
 	if _ElogTraceCnt == ELOG_TRACE_ALL || _ElogTraceCnt > 0 {
-		ri, _ := GetRuntimeInfo(ctx, 4)
+		ri, _ := getRuntimeInfo(ctx, 4)
 		logIt := false
 		for _, it := range _ElogTraceFiles {
 			if it == "*" || strings.Index(ri.FileName, it) > -1 {
@@ -265,12 +265,12 @@ func traceLogitf(ctx *LogCtx, format string, o ...interface{}) {
 	}
 }
 
-func AppendFileInfo(ctx *LogCtx, err error, depth int) error {
+func appendFileInfo(ctx *LogCtx, err error, depth int) error {
 	if _ElogErrorAppendFileLine && err != nil {
 		ss := err.Error()
 		lastRune := ss[len(ss)-1]
 		if lastRune != '/' {
-			ri, _ := GetRuntimeInfo(ctx, depth)
+			ri, _ := getRuntimeInfo(ctx, depth)
 			sfi := strings.Replace(fmt.Sprintf("%s:%d", ri.FileName, ri.Line), ".go", "", -1)
 			if _ElogObfuscateFileLine {
 				sfi = ObfuscateText(sfi)
@@ -289,12 +289,12 @@ func logAndRet(ctx *LogCtx, lvl int, prefix string, err error) error {
 		return nil
 	}
 	if _ElogLevel >= lvl {
-		ri, _ := GetRuntimeInfo(ctx, 4)
+		ri, _ := getRuntimeInfo(ctx, 4)
 		ss := fmt.Sprintf("lar - [%v] %v", reflect.TypeOf((err)), err)
 		ss2 := fmt.Sprintf("%s %s [%s:%d] ", prefix, ss, ri.FileName, ri.Line)
 		core_logit(ctx, ss2)
 	}
-	return AppendFileInfo(ctx, err, 5)
+	return appendFileInfo(ctx, err, 5)
 }
 
 func Elar(err error) error {
@@ -572,14 +572,14 @@ func DeobfuscateText(obfuscated string) (string, error) {
 
 func Pp(o ...interface{}) {
 	fmt.Print(">> ")
-	ri, _ := GetRuntimeInfo(nil, 3)
+	ri, _ := getRuntimeInfo(nil, 3)
 	pp.Print(o)
 	fmt.Printf("  [%s:%d] <<\n", ri.FileName, ri.Line)
 }
 
 func dbglnLogit(ctx *LogCtx, skip int, o ...interface{}) {
 	if _ElogLevel >= ELOG_DEBUG {
-		ri, _ := GetRuntimeInfo(ctx, skip)
+		ri, _ := getRuntimeInfo(ctx, skip)
 		ss := fmt.Sprint(o...)
 		prefix := ELOG_DBG_FUNCTION
 		ss2 := fmt.Sprintf("%s %s [%s:%d] ", prefix, ss, ri.FileName, ri.Line)
@@ -587,7 +587,7 @@ func dbglnLogit(ctx *LogCtx, skip int, o ...interface{}) {
 	}
 }
 
-func DbglnBase(skip int, o ...interface{}) {
+func dbglnBase(skip int, o ...interface{}) {
 
 	if _ElogTotalOFF {
 		return
@@ -612,7 +612,7 @@ func DbglnBase(skip int, o ...interface{}) {
 		}
 
 		ss := strings.Join(aa, " ")
-		ri, _ := GetRuntimeInfo(nil, skip)
+		ri, _ := getRuntimeInfo(nil, skip)
 		ss2 := fmt.Sprintf(" %s%s%s [%s:%d]", rst, ss, rst, ri.FileName, ri.Line)
 		fmt.Println(ss2)
 	} else {
@@ -622,12 +622,12 @@ func DbglnBase(skip int, o ...interface{}) {
 
 func Dbgln(o ...interface{}) {
 
-	DbglnBase(4, o...)
+	dbglnBase(4, o...)
 }
 
 func DbglnIf(cond bool, o ...interface{}) {
 	if cond {
-		DbglnBase(4, o...)
+		dbglnBase(4, o...)
 	}
 }
 
@@ -640,7 +640,7 @@ func Dbgln2(o ...interface{}) {
 	}
 
 	ss := strings.Join(aa, " ")
-	ri, _ := GetRuntimeInfo(nil, 3)
+	ri, _ := getRuntimeInfo(nil, 3)
 	ss2 := fmt.Sprintf(" %s [%s:%d]", ss, ri.FileName, ri.Line)
 	fmt.Println(ss2)
 }
@@ -652,5 +652,5 @@ func Dbgf(format string, o ...interface{}) {
 	for _, s := range strings.Split(ss, "__") {
 		args = append(args, s)
 	}
-	DbglnBase(4, args...)
+	dbglnBase(4, args...)
 }
