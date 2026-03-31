@@ -1,7 +1,6 @@
 package elog
 
 import (
-	"encoding/hex"
 	"fmt"
 	"log"
 	"math/rand"
@@ -22,7 +21,6 @@ const ELOG_INFO = 4
 const ELOG_WARN = 3
 const ELOG_ERROR = 2
 
-// const ELOG_FATAL = 1
 const ELOG_PANIC = 0
 const ELOG_OFF = -1
 
@@ -35,7 +33,6 @@ const ELOG_OFF_MSG = "OFF"
 
 const ELOG_DBG_FUNCTION = "DBG_FUNC"
 
-// const ELOG_FATAL_MSG = "FATAL"
 const ELOG_PANIC_MSG = "PANIC"
 
 const ELOG_TRACE_PREFIX = "TRACE"
@@ -45,7 +42,6 @@ const ELOG_ROTATE_MODE_2FILES = "2"
 
 var _ElogLevel = ELOG_DEBUG
 var _ElogErrorAppendFileLine = true
-var _ElogObfuscateFileLine = false
 var _ElogRotateMode = ELOG_ROTATE_MODE_TIME
 
 const ELOG_TRACE_ALL = -1000
@@ -133,10 +129,6 @@ func SetRotateMode(mode string) {
 
 func SetErrorAppendFileLine(b bool) {
 	_ElogErrorAppendFileLine = b
-}
-
-func SetObfuscateFileLine(b bool) {
-	_ElogObfuscateFileLine = b
 }
 
 func SetLogLevel(level string) error {
@@ -272,9 +264,6 @@ func appendFileInfo(ctx *LogCtx, err error, depth int) error {
 		if lastRune != '/' {
 			ri, _ := getRuntimeInfo(ctx, depth)
 			sfi := strings.Replace(fmt.Sprintf("%s:%d", ri.FileName, ri.Line), ".go", "", -1)
-			if _ElogObfuscateFileLine {
-				sfi = ObfuscateText(sfi)
-			}
 			if ctx != nil && ctx.Prefix != "" {
 				return fmt.Errorf("%s - %v /%s/", ctx.Prefix, err, sfi)
 			}
@@ -525,51 +514,6 @@ func RecoverPanic(fn func()) (recovered interface{}) {
 	return
 }
 
-func ObfuscateText(text string) string {
-	seed := rune(rand.Intn(0xFF))
-	plus := rune(seed * 8)
-	obfuscated := make([]byte, len(text))
-
-	inc := seed
-	for i, r := range text {
-		inc += plus
-		obfuscated[i] = byte(int(r) ^ int(inc))
-	}
-
-	obfuscatedHex := hex.EncodeToString(obfuscated)
-	seedHex := fmt.Sprintf("%02x", int(seed))
-
-	obfuscatedWithSeed := fmt.Sprintf("%s%s", seedHex, obfuscatedHex)
-
-	return obfuscatedWithSeed
-}
-
-func DeobfuscateText(obfuscated string) (string, error) {
-	seedHex := obfuscated[:2]
-	obfuscatedHex := obfuscated[2:]
-
-	seedInt, err := hex.DecodeString(seedHex)
-	if err != nil {
-		return "", err
-	}
-	seed := rune(seedInt[0])
-
-	obfuscatedBytes, err := hex.DecodeString(obfuscatedHex)
-	if err != nil {
-		return "", err
-	}
-
-	deobfuscated := make([]byte, len(obfuscatedBytes))
-	inc := seed
-	plus := rune(seed * 8)
-	for i, b := range obfuscatedBytes {
-		inc += plus
-		deobfuscated[i] = b ^ byte(inc)
-	}
-
-	return string(deobfuscated), nil
-}
-
 func Pp(o ...interface{}) {
 	fmt.Print(">> ")
 	ri, _ := getRuntimeInfo(nil, 3)
@@ -630,21 +574,6 @@ func DbglnIf(cond bool, o ...interface{}) {
 		dbglnBase(4, o...)
 	}
 }
-
-/*
-func Dbgln2(o ...interface{}) {
-
-	aa := []string{}
-	for _, v := range o {
-		aa = append(aa, fmt.Sprintf("%v", v))
-	}
-
-	ss := strings.Join(aa, " ")
-	ri, _ := getRuntimeInfo(nil, 3)
-	ss2 := fmt.Sprintf(" %s [%s:%d]", ss, ri.FileName, ri.Line)
-	fmt.Println(ss2)
-}
-*/
 
 func Dbgf(format string, o ...interface{}) {
 	ss := fmt.Sprintf(format, o...)

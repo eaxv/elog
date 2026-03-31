@@ -23,7 +23,6 @@ func captureLog(t *testing.T) (*bytes.Buffer, func()) {
 func resetState() {
 	_ElogLevel = ELOG_DEBUG
 	_ElogErrorAppendFileLine = true
-	_ElogObfuscateFileLine = false
 	_ElogRotateMode = ELOG_ROTATE_MODE_TIME
 	_ElogTraceCnt = 0
 	_ElogTraceFiles = []string{}
@@ -343,49 +342,7 @@ func TestAppendFileInfoNil(t *testing.T) {
 	}
 }
 
-// --- 4. Obfuskace ---
-
-func TestObfuscateDeobfuscate(t *testing.T) {
-	cases := []string{
-		"hello",
-		"elog_test:42",
-		"soubor s mezerami",
-		"a",
-		"1234567890abcdef",
-	}
-	for _, tc := range cases {
-		enc := ObfuscateText(tc)
-		dec, err := DeobfuscateText(enc)
-		if err != nil {
-			t.Errorf("DeobfuscateText(%q) error: %v", enc, err)
-		}
-		if dec != tc {
-			t.Errorf("roundtrip selhalo: orig=%q enc=%q dec=%q", tc, enc, dec)
-		}
-	}
-}
-
-func TestObfuscateRandomSeed(t *testing.T) {
-	// dvě volání se stejným vstupem mohou dát různý výstup (náhodný seed)
-	// Pro alespoň 10 pokusů očekáváme aspoň 2 různé výsledky
-	orig := "teststring"
-	results := map[string]bool{}
-	for i := 0; i < 10; i++ {
-		results[ObfuscateText(orig)] = true
-	}
-	if len(results) < 2 {
-		t.Log("Varování: ObfuscateText vždy vygeneroval stejný výstup (deterministický seed?)")
-	}
-}
-
-func TestDeobfuscateInvalidHex(t *testing.T) {
-	_, err := DeobfuscateText("ZZINVALIDHEX")
-	if err == nil {
-		t.Error("DeobfuscateText na neplatném hex mělo vrátit error")
-	}
-}
-
-// --- 5. Panic a RecoverPanic ---
+// --- 4. Panic a RecoverPanic ---
 
 func TestRecoverPanic(t *testing.T) {
 	defer resetState()
