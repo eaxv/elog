@@ -97,7 +97,7 @@ func newElog_limiter() *ElogLimiter {
 func (self *ElogLimiter) Log(format string, o ...interface{}) {
 	s := fmt.Sprintf(format, o...)
 	ss := fmt.Sprintf("%s %s", self.prefix, s)
-	log.Printf(ss)
+	log.Print(ss)
 }
 
 // uklada hlasky do mapy a opakujici se hlasky potlacuje podle definovanych pravidel
@@ -185,7 +185,7 @@ func GetTraceFiles() []string {
 	return _ElogTraceFiles
 }
 
-func SetTracePatters(pat []string) {
+func SetTracePatterns(pat []string) {
 	_ElogTracePatterns = pat
 }
 
@@ -213,7 +213,7 @@ func GetLogLevelMsg() string {
 	case ELOG_OFF:
 		return ELOG_OFF_MSG
 	}
-	return fmt.Sprintf("Error: Unknown log level: %s\n", GetLogLevel())
+	return fmt.Sprintf("Error: Unknown log level: %d\n", GetLogLevel())
 }
 
 func SetLogLevelNum(level int) {
@@ -418,6 +418,14 @@ func ElarCtxf(ctx *LogCtx, format string, o ...interface{}) error {
 	return logAndRet(ctx, ELOG_ERROR, ELOG_ERROR_MSG, err)
 }
 
+func Debug2(o ...interface{}) {
+	logit(nil, ELOG_DEBUG2, ELOG_DEBUG2_MSG, o...)
+}
+
+func Debug2f(format string, o ...interface{}) {
+	logitf(nil, ELOG_DEBUG2, ELOG_DEBUG2_MSG, format, o...)
+}
+
 func Debug(o ...interface{}) {
 	logit(nil, ELOG_DEBUG, ELOG_DEBUG_MSG, o...)
 }
@@ -426,12 +434,21 @@ func Debugf(format string, o ...interface{}) {
 	logitf(nil, ELOG_DEBUG, ELOG_DEBUG_MSG, format, o...)
 }
 
+func DebugCtxf(ctx *LogCtx, format string, o ...interface{}) {
+	logitf(ctx, ELOG_DEBUG, ELOG_DEBUG_MSG, format, o...)
+}
+
 // Nekdy potrebujeme testovat zda je trace zapnuty pred tim, nez
 // zavolame Tracef/TraceCtxf kuli performace, protoze nekdy nechceme
 // aby se vubec volalo formatovani do textove hlasky (kuli vykonu)
 func IsTrace() bool {
 	return _ElogTraceCnt == ELOG_TRACE_ALL || _ElogTraceCnt > 0
 }
+
+func Trace(o ...interface{}) {
+	traceLogitf(nil, "%s", fmt.Sprint(o...))
+}
+
 func Tracef(format string, o ...interface{}) {
 	traceLogitf(nil, format, o...)
 }
@@ -460,12 +477,20 @@ func Warnf(format string, o ...interface{}) {
 	logitf(nil, ELOG_WARN, ELOG_WARN_MSG, format, o...)
 }
 
+func WarnCtxf(ctx *LogCtx, format string, o ...interface{}) {
+	logitf(ctx, ELOG_WARN, ELOG_WARN_MSG, format, o...)
+}
+
 func Error(o ...interface{}) {
 	logit(nil, ELOG_ERROR, ELOG_ERROR_MSG, o...)
 }
 
 func Errorf(format string, o ...interface{}) {
 	logitf(nil, ELOG_ERROR, ELOG_ERROR_MSG, format, o...)
+}
+
+func ErrorCtxf(ctx *LogCtx, format string, o ...interface{}) {
+	logitf(ctx, ELOG_ERROR, ELOG_ERROR_MSG, format, o...)
 }
 
 func getLineFromStack(skipFlt string) string {
@@ -529,8 +554,8 @@ func PanicfEx(flt string, format string, o ...interface{}) {
 	panic(PanicT(ss))
 }
 
-func Unrechable() {
-	Panic("unrechable")
+func Unreachable() {
+	Panic("unreachable")
 }
 
 func fileSizeRotate(fname string, max_file_size int64) {
