@@ -11,7 +11,6 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/k0kubun/pp"
@@ -45,7 +44,6 @@ const ELOG_ROTATE_MODE_TIME = "T"
 const ELOG_ROTATE_MODE_2FILES = "2"
 
 var _ElogLevel = ELOG_DEBUG
-var _ElogLimiter *ElogLimiter = nil
 var _ElogErrorAppendFileLine = true
 var _ElogObfuscateFileLine = false
 var _ElogRotateMode = ELOG_ROTATE_MODE_TIME
@@ -66,100 +64,6 @@ var _ElogTotalOFF = false
 var _ElogFile *os.File
 
 type PanicT string
-
-// >> limiter opakujicich se hlasek
-type ElogLimiterValT struct {
-	cnt         int
-	tm          time.Time
-	limit_print int
-}
-
-type ElogLimiter struct {
-	mux           sync.Mutex
-	cache         map[string]ElogLimiterValT
-	limitStart    int
-	maxCacheSize  int
-	msgTimeoutSec time.Duration
-	prefix        string
-}
-
-func newElog_limiter() *ElogLimiter {
-	lf := ElogLimiter{}
-	lf.mux = sync.Mutex{}
-	lf.cache = map[string]ElogLimiterValT{}
-	lf.limitStart = 10
-	lf.maxCacheSize = 1024
-	lf.msgTimeoutSec = time.Second * 20
-	lf.prefix = "ELOG-LIMITER"
-	return &lf
-}
-
-func (self *ElogLimiter) Log(format string, o ...interface{}) {
-	s := fmt.Sprintf(format, o...)
-	ss := fmt.Sprintf("%s %s", self.prefix, s)
-	log.Print(ss)
-}
-
-// uklada hlasky do mapy a opakujici se hlasky potlacuje podle definovanych pravidel
-// diky tomu je mozne i pouzivat DEBUG se zapnutym lua klientem
-func (self *ElogLimiter) limitterSuppressRepeatingMsgs(msg string) (bool, string) {
-	var found bool
-	var val ElogLimiterValT
-
-	self.mux.Lock()
-	defer self.mux.Unlock()
-
-	//cache dovolime max ...
-	if len(self.cache) > self.maxCacheSize {
-		self.Log("cache flushed - size: %d", len(self.cache))
-		self.cache = map[string]ElogLimiterValT{}
-	}
-	now := time.Now()
-	val, found = self.cache[msg]
-	//pokud neni v cache
-	if !found {
-		val = ElogLimiterValT{1, now, self.limitStart}
-		self.cache[msg] = val
-		return true, msg
-	}
-	//pokud jsme hlasku nevideli X sec vypneme limitaci
-	if now.Sub(val.tm) > self.msgTimeoutSec {
-		self.Log("limit msg stopped - timeout cnt: %d msg: %s", val.cnt, msg)
-		val.tm = now
-		val.cnt = 1
-		val.limit_print = self.limitStart
-		self.cache[msg] = val
-		return true, msg
-	}
-	//pro opakujici se hlasky
-	if val.cnt >= self.limitStart {
-		if val.cnt == self.limitStart {
-			self.Log("limiting msg started : %s", msg)
-		}
-		val.tm = now
-		val.cnt += 1
-		self.cache[msg] = val
-		if (val.cnt % val.limit_print) == 0 {
-			val.limit_print *= 2
-			self.cache[msg] = val
-			return true, fmt.Sprintf("%s (%s: %d)", msg, self.prefix, val.cnt)
-		}
-		return false, msg
-	}
-	//zbytek
-	val.tm = now
-	val.cnt += 1
-	self.cache[msg] = val
-	return true, msg
-}
-
-// <<
-
-func SetLimiter() {
-	_ElogLimiter = newElog_limiter()
-	_ElogLimiter.Log("ON cache: %d limit start: %d timeout: %v",
-		_ElogLimiter.maxCacheSize, _ElogLimiter.limitStart, _ElogLimiter.msgTimeoutSec)
-}
 
 func SetTraceCnt(cnt int) {
 	_ElogTraceCnt = cnt
@@ -307,14 +211,7 @@ func core_logit(ctx *LogCtx, o ...interface{}) {
 	if ctx != nil && ctx.Prefix != "" {
 		ss = fmt.Sprintf("<%s> %s", ctx.Prefix, ss)
 	}
-	if _ElogLimiter != nil {
-		b, ss2 := _ElogLimiter.limitterSuppressRepeatingMsgs(ss)
-		if b {
-			log.Print(ss2)
-		}
-	} else {
-		log.Print(ss)
-	}
+	log.Print(ss)
 }
 
 func logit(ctx *LogCtx, lvl int, prefix string, o ...interface{}) {

@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 )
 
 // captureLog přesměruje log výstup do bufferu. Volej restore() po testu.
@@ -23,7 +22,6 @@ func captureLog(t *testing.T) (*bytes.Buffer, func()) {
 // resetState vrátí globální proměnné do výchozího stavu.
 func resetState() {
 	_ElogLevel = ELOG_DEBUG
-	_ElogLimiter = nil
 	_ElogErrorAppendFileLine = true
 	_ElogObfuscateFileLine = false
 	_ElogRotateMode = ELOG_ROTATE_MODE_TIME
@@ -432,81 +430,7 @@ func TestPanicf(t *testing.T) {
 	}
 }
 
-// --- 6. Limiter ---
-
-func TestLimiterFirstOccurrence(t *testing.T) {
-	lim := newElog_limiter()
-	ok, _ := lim.limitterSuppressRepeatingMsgs("zprava1")
-	if !ok {
-		t.Error("První výskyt zprávy byl potlačen (měl projít)")
-	}
-}
-
-func TestLimiterSuppress(t *testing.T) {
-	_, restore := captureLog(t)
-	defer restore()
-	lim := newElog_limiter()
-	lim.limitStart = 3
-	msg := "opakovana zprava"
-	// první 3 projdou
-	for i := 0; i < 3; i++ {
-		ok, _ := lim.limitterSuppressRepeatingMsgs(msg)
-		if !ok {
-			t.Errorf("Iterace %d měla projít (limitStart=%d)", i, lim.limitStart)
-		}
-	}
-	// 4. a další se potlačí
-	suppressed := 0
-	for i := 0; i < 10; i++ {
-		ok, _ := lim.limitterSuppressRepeatingMsgs(msg)
-		if !ok {
-			suppressed++
-		}
-	}
-	if suppressed == 0 {
-		t.Error("Limiter nepotlačil žádnou opakovanou zprávu")
-	}
-}
-
-func TestLimiterTimeout(t *testing.T) {
-	_, restore := captureLog(t)
-	defer restore()
-	lim := newElog_limiter()
-	lim.limitStart = 2
-	lim.msgTimeoutSec = 10 * time.Millisecond
-	msg := "timeout zprava"
-
-	// přeplníme limit
-	for i := 0; i < 5; i++ {
-		lim.limitterSuppressRepeatingMsgs(msg)
-	}
-	// počkáme na timeout
-	time.Sleep(20 * time.Millisecond)
-	ok, _ := lim.limitterSuppressRepeatingMsgs(msg)
-	if !ok {
-		t.Error("Po timeoutu by zpráva měla znovu projít")
-	}
-}
-
-func TestLimiterCacheFlush(t *testing.T) {
-	_, restore := captureLog(t)
-	defer restore()
-	lim := newElog_limiter()
-	lim.maxCacheSize = 5
-	// naplníme cache přes limit
-	for i := 0; i < 10; i++ {
-		lim.limitterSuppressRepeatingMsgs(fmt.Sprintf("zprava-%d", i))
-	}
-	// cache se promazala (velikost ≤ maxCacheSize)
-	lim.mux.Lock()
-	size := len(lim.cache)
-	lim.mux.Unlock()
-	if size > lim.maxCacheSize {
-		t.Errorf("Cache nebyla promazána: size=%d, max=%d", size, lim.maxCacheSize)
-	}
-}
-
-// --- 7. Trace ---
+// --- 6. Trace ---
 
 func TestIsTraceFalse(t *testing.T) {
 	defer resetState()
